@@ -2,12 +2,23 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <string>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 #define PERIPHERAL_NAME                "GameTower"
 #define SERVICE_UUID                "EBC0FCC1-2FC3-44B7-94A8-A08D0A0A5079"
 #define CHARACTERISTIC_INPUT_UUID   "C1AB2C55-7914-4140-B85B-879C5E252FE5"
 #define CHARACTERISTIC_OUTPUT_UUID  "643954A4-A6CC-455C-825C-499190CE7DB0"
 #define CHARACTERISTIC_INPUT_STRING_UUID   "622B2C55-7914-4140-B85B-879C5E252DA0"
+
+std::string currentOutput = "Started...";
 
 // Current value of output characteristic persisted here
 static uint8_t outputData[1];
@@ -19,10 +30,12 @@ BLECharacteristic *pOutputChar;
 class ServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
         Serial.println("BLE Client Connected");
+        currentOutput = "BLE Client Connected";
     }
     void onDisconnect(BLEServer* pServer) {
         BLEDevice::startAdvertising();
         Serial.println("BLE Client Disconnected");
+        currentOutput = "BLE Client Disconnected";
     }
 };
 
@@ -59,8 +72,9 @@ class StringReceivedCallbacks: public BLECharacteristicCallbacks {
         //char  output_msg[1024];
         //snprintf(output_msg, sizeof output_msg, "Got %u chars: %s\n", strLen, inputString.c_str());
         std::string output_msg = "Got " + std::to_string(strLen) + " chars: " + inputString + "\n";
-        
-        Serial.printf("%s",output_msg.c_str());  
+        currentOutput = output_msg;
+        Serial.printf("%s",output_msg.c_str());
+
         pOutputChar->setValue(output_msg);
        // pOutputChar->setValue((uint8_t *)outputData, 1);
        pOutputChar->notify();
@@ -68,6 +82,12 @@ class StringReceivedCallbacks: public BLECharacteristicCallbacks {
 };
 
 void setup() {
+
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+    Serial.println(F("SSD1306 allocation failed"));
+  }
+  
   // Use the Arduino serial monitor set to this baud rate to view BLE peripheral logs 
   Serial.begin(115200);
   Serial.println("Begin Setup BLE Service and Characteristics");
@@ -117,6 +137,12 @@ BLECharacteristic *pInputString = pService->createCharacteristic(
 }
 
 void loop() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println(currentOutput.c_str());
+  display.display();
   // put your main code here, to run repeatedly:
-  delay(2000);
+  delay(20);
 }
