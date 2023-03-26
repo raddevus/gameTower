@@ -18,6 +18,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #define CHARACTERISTIC_OUTPUT_UUID  "643954A4-A6CC-455C-825C-499190CE7DB0"
 #define CHARACTERISTIC_INPUT_STRING_UUID   "622B2C55-7914-4140-B85B-879C5E252DA0"
 
+#define CHAR_NUMBER_OF_PLAYERS_OUT "02c9cc15-5e88-4d0d-9f69-540675058dc1"
+#define CHAR_NUMBER_OF_PLAYERS "02c9cc15-5e88-4d0d-9f69-54067506f63a"
+#define CHAR_GAME_IS_STARTED_OUT "39f37f0a-04f4-49e5-a20f-cce75876f63a"
+#define CHAR_GAME_IS_STARTED "39f37f0a-04f4-49e5-a20f-cce75872c290"
+#define CHAR_GAME_WINNER_ID_OUT "f2194320-89f2-46b0-8694-4d471212c290"
+#define CHAR_REGISTER_PLAYER "61462f3d-c01a-4ea0-b46f-7ee98362e1e4"
+
 std::string currentOutput = "Started...";
 
 // Current value of output characteristic persisted here
@@ -25,6 +32,13 @@ static uint8_t outputData[1];
 
 // Output characteristic is used to send the response back to the connected phoneX
 BLECharacteristic *pOutputChar;
+BLECharacteristic *pNumberOfPlayers;
+BLECharacteristic *pGameIsStarted;
+BLECharacteristic *pGameWinnerId;
+
+int playerCounterId = 0;
+//std::string[] allPlayers = std::string[10];
+std::vector<std::string> allPlayers;  
 
 // Class defines methods called when a device connects and disconnects from the service
 class ServerCallbacks: public BLEServerCallbacks {
@@ -42,7 +56,7 @@ class ServerCallbacks: public BLEServerCallbacks {
 class InputReceivedCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharWriteState) {
         uint8_t *inputValues = pCharWriteState->getData();
-
+          
         switch(inputValues[2]) {
           case 0x00: // add
             Serial.printf("Adding:   %02x %02x\r\n", inputValues[0], inputValues[1]);  
@@ -81,6 +95,30 @@ class StringReceivedCallbacks: public BLECharacteristicCallbacks {
     }
 };
 
+class RegisterPlayerCallbacks: public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharWriteState) {
+        std::string userName = pCharWriteState->getValue();
+        allPlayers.push_back(userName);
+        
+        size_t strLen = pCharWriteState->getLength();
+        //char  output_msg[1024];
+        //snprintf(output_msg, sizeof output_msg, "Got %u chars: %s\n", strLen, inputString.c_str());
+        std::string output_msg = "Got " + std::to_string(strLen) + " userName: " + userName + "\n";
+        currentOutput = output_msg;
+        Serial.printf("%s",output_msg.c_str());
+
+        pOutputChar->setValue(output_msg);
+       // pOutputChar->setValue((uint8_t *)outputData, 1);
+       pOutputChar->notify();
+    }
+
+    void onRead(BLECharacteristic *pCharReadState) {
+        std::string output_msg = "There are " + std::to_string(allPlayers.size()) + " registered players.";
+        currentOutput = output_msg;
+        Serial.printf("%s", output_msg.c_str());
+    }
+};
+
 void setup() {
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
@@ -104,19 +142,46 @@ void setup() {
   BLECharacteristic *pInputChar = pService->createCharacteristic(
                               CHARACTERISTIC_INPUT_UUID,                                        
                               BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE);
-
+  // #####################################################
+  // ############ OUTPUT CHARACTERISTICS   ###############
+  // #####################################################
   pOutputChar = pService->createCharacteristic(
                               CHARACTERISTIC_OUTPUT_UUID,
                               BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-// CHARACTERISTIC_INPUT_STRING_UUID
+  pNumberOfPlayers = pService->createCharacteristic(
+                              CHAR_NUMBER_OF_PLAYERS_OUT,
+                              BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pGameIsStarted = pService->createCharacteristic(
+                              CHAR_GAME_IS_STARTED_OUT,
+                              BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pGameWinnerId = pService->createCharacteristic(
+                              CHAR_GAME_WINNER_ID_OUT,
+                              BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+
+  // #####################################################
+  // ############ INPUT CHARACTERISTICS   ###############
+  // #####################################################
 BLECharacteristic *pInputString = pService->createCharacteristic(
                               CHARACTERISTIC_INPUT_STRING_UUID,                                        
                               BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE);
 
+BLECharacteristic *pRegisterPlayer = pService->createCharacteristic(
+                              CHAR_REGISTER_PLAYER,                                        
+                              BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE);
+
+// BLECharacteristic *pInputString = pService->createCharacteristic(
+//                               CHARACTERISTIC_INPUT_STRING_UUID,                                        
+//                               BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE);
+                              
+//  BLECharacteristic *pInputString = pService->createCharacteristic(
+//                               CHARACTERISTIC_INPUT_STRING_UUID,                                        
+//                               BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE);
+                              
   // Hook callback to report server events
   pServer->setCallbacks(new ServerCallbacks());
   pInputChar->setCallbacks(new InputReceivedCallbacks());
   pInputString->setCallbacks(new StringReceivedCallbacks());
+  pRegisterPlayer->setCallbacks(new RegisterPlayerCallbacks());
 
   // Initial characteristic value
   outputData[0] = 0x00;
