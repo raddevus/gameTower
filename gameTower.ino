@@ -107,9 +107,9 @@ class RegisterPlayerCallbacks: public BLECharacteristicCallbacks {
         currentOutput = output_msg;
         Serial.printf("%s",output_msg.c_str());
 
-        pOutputChar->setValue(output_msg);
+        pNumberOfPlayers->setValue(output_msg);
        // pOutputChar->setValue((uint8_t *)outputData, 1);
-       pOutputChar->notify();
+       pNumberOfPlayers->notify();
     }
 
     void onRead(BLECharacteristic *pCharReadState) {
@@ -167,7 +167,8 @@ BLECharacteristic *pInputString = pService->createCharacteristic(
 
 BLECharacteristic *pRegisterPlayer = pService->createCharacteristic(
                               CHAR_REGISTER_PLAYER,                                        
-                              BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE);
+                              BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_WRITE 
+                              | BLECharacteristic::PROPERTY_READ);
 
 // BLECharacteristic *pInputString = pService->createCharacteristic(
 //                               CHARACTERISTIC_INPUT_STRING_UUID,                                        
