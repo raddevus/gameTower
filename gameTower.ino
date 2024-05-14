@@ -202,6 +202,18 @@ BLECharacteristic *pRegisterPlayer = pService->createCharacteristic(
   Serial.println("BLE Service is advertising");
 }
 
+int potInput = 15;
+
+void generateOutData(){
+  // this method generates data 0-4095 
+  // depending upon pot value hooked up on pin 15
+  int potVal = analogRead(potInput);
+  Serial.println(potVal);
+  pOutputChar->setValue(potVal);
+  pOutputChar->notify();
+  
+}
+
 void loop() {
   display.clearDisplay();
   display.setTextSize(1);
@@ -210,5 +222,7 @@ void loop() {
   display.println(currentOutput.c_str());
   display.display();
   // put your main code here, to run repeatedly:
+  generateOutData();
   delay(20);
+  
 }
