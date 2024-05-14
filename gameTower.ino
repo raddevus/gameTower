@@ -203,6 +203,7 @@ BLECharacteristic *pRegisterPlayer = pService->createCharacteristic(
 }
 
 int potInput = 15;
+int postDataCounter = 0;
 
 void generateOutData(){
   // this method generates data 0-4095 
@@ -220,9 +221,14 @@ void loop() {
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
   display.println(currentOutput.c_str());
+  
   display.display();
   // put your main code here, to run repeatedly:
-  generateOutData();
+  postDataCounter++;
+  if (postDataCounter >=20){
+    generateOutData();
+    postDataCounter = 0;
+  }
   delay(20);
   
 }
